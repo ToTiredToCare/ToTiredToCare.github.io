@@ -27,6 +27,9 @@
 
     <label for="DC">Duty cycle [%]:</label>
     <input type="number" id="DC" value="85"><br><br>
+    
+    <label for="SWT">Switching Time [ms]:</label>
+    <input type="number" id="SWT" value="0"><br><br>
 
     <input type="submit" value="Run" id="runButton">
   </form>
@@ -49,6 +52,7 @@
       let T = parseFloat(document.getElementById("T").value) || 0;
       let F = parseFloat(document.getElementById("F").value) || 0;
       let DC = parseFloat(document.getElementById("DC").value) / 100;
+      let SWT = parseFloat(document.getElementById("SWT").value) / 1000;
 
       if (U0 <= 0 || R1 <= 0 || R2 <= 0 || C <= 0 || T <= 0 || F <= 0 || DC <= 0 || DC > 1) {
         console.error("All input values must be positive numbers.");
@@ -82,12 +86,17 @@
         voltageData.push(V);
         outputText += `V after discharge = ${V.toFixed(5)} V<br>`;
 
+        i += t;
+        cycle++;
+
         if (Math.abs(oldV - V) < 1e-5) {
           break;
         }
-        i += t;
-        cycle++;
       }
+
+      V = V * Math.exp(-((SWT) / tau2));
+      cycleData.push(cycle + 1);
+      voltageData.push(V);
 
       outputText += `Final Voltage: ${V.toFixed(5)} V`;
       document.getElementById("output").innerHTML = outputText;
