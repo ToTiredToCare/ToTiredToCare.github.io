@@ -64,11 +64,11 @@
       let t = 1 / F;
       let tau1 = R1 * C * 1e-6;
       let tau2 = R2 * C * 1e-6;
-      let cycleData = [];
+      let timeData = [];
       let voltageData = [];
       let outputText = "";
-      let cycle = 0;
-      cycleData.push(cycle);
+      let time = 0;
+      timeData.push(time);
       voltageData.push(V);
 
       for (let i = 0; i < T;) {
@@ -76,16 +76,16 @@
 
         // Charging phase
         V += (U0 - V) * (1 - Math.exp(-((t * DC) / tau1)));
-        cycleData.push(cycle + DC);
+        timeData.push(time + DC * t);
         voltageData.push(V);
 
         // Discharging phase
         V = V * Math.exp(-((t * (1 - DC)) / tau2));
-        cycleData.push(cycle + 1); // Keep discharge phase on the same curve
+        timeData.push(time + t); // Keep discharge phase on the same curve
         voltageData.push(V);
 
         i += t;
-        cycle++;
+        time += t;
 
         if (Math.abs(oldV - V) < 1e-3) {
           break;
@@ -93,13 +93,13 @@
       }
 
       V = V * Math.exp(-((SWT) / tau2));
-      cycleData.push(cycle + 1);
+      timeData.push(time + SWT);
       voltageData.push(V);
 
-      drawChart(cycleData, voltageData);
+      drawChart(timeData, voltageData);
     }
 
-    function drawChart(cycleData, voltageData) {
+    function drawChart(timeData, voltageData) {
       let ctx = document.getElementById("voltageChart").getContext("2d");
       if (window.voltageChart instanceof Chart) {
         window.voltageChart.destroy();
@@ -107,9 +107,9 @@
       window.voltageChart = new Chart(ctx, {
         type: "line",
         data: {
-          labels: cycleData,
+          labels: timeData,
           datasets: [{
-            label: "Voltage over Cycles",
+            label: "Voltage over Time",
             data: voltageData,
             borderColor: "blue",
             borderWidth: 2,
@@ -122,7 +122,7 @@
             x: {
               title: {
                 display: true,
-                text: "Number of Cycles"
+                text: "Time [s]"
               },
               type: "linear"
             },
