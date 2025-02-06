@@ -33,8 +33,8 @@
 
     <input type="submit" value="Run" id="runButton">
   </form>
-  <canvas id="voltageChart"></canvas>
   <div id="output"></div>
+  <canvas id="voltageChart"></canvas>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -54,7 +54,7 @@
       let DC = parseFloat(document.getElementById("DC").value) / 100;
       let SWT = parseFloat(document.getElementById("SWT").value) / 1000;
 
-      if (U0 <= 0 || R1 <= 0 || R2 <= 0 || C <= 0 || T <= 0 || F <= 0 || DC <= 0 || DC > 1) {
+      if (U0 <= 0 || R1 <= 0 || R2 <= 0 || C <= 0 || T <= 0 || F <= 0 || DC <= 0 || DC > 1 || SWT < 0) {
         console.error("All input values must be positive numbers.");
         document.getElementById("output").innerHTML = "Error: All input values must be positive numbers.";
         return;
@@ -78,18 +78,16 @@
         V += (U0 - V) * (1 - Math.exp(-((t * DC) / tau1)));
         cycleData.push(cycle + DC);
         voltageData.push(V);
-        outputText += `V after charge = ${V.toFixed(5)} V<br>`;
 
         // Discharging phase
         V = V * Math.exp(-((t * (1 - DC)) / tau2));
         cycleData.push(cycle + 1); // Keep discharge phase on the same curve
         voltageData.push(V);
-        outputText += `V after discharge = ${V.toFixed(5)} V<br>`;
 
         i += t;
         cycle++;
 
-        if (Math.abs(oldV - V) < 1e-5) {
+        if (Math.abs(oldV - V) < 1e-3) {
           break;
         }
       }
@@ -97,9 +95,6 @@
       V = V * Math.exp(-((SWT) / tau2));
       cycleData.push(cycle + 1);
       voltageData.push(V);
-
-      outputText += `Final Voltage: ${V.toFixed(5)} V`;
-      document.getElementById("output").innerHTML = outputText;
 
       drawChart(cycleData, voltageData);
     }
