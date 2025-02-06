@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <form>
+    <label for="U0">Peak supply voltage [V]:</label>
+    <input type="number" id="U0" value="10"><br><br>
+
+    <label for="R1">Charging Resistor [Ω]:</label>
+    <input type="number" id="R1" value="10"><br><br>
+
+    <label for="R2">Lamp resistance [Ω]:</label>
+    <input type="number" id="R2" value="50"><br><br>
+
+    <label for="C">Capacitance [µF]:</label>
+    <input type="number" id="C" value="500"><br><br>
+
+    <label for="T">Simulation time [s]:</label>
+    <input type="number" id="T" value="10"><br><br>
+
+    <label for="F">Frequency [Hz]:</label>
+    <input type="number" id="F" value="110"><br><br>
+
+    <label for="DC">Duty cycle [%]:</label>
+    <input type="number" id="DC" value="85"><br><br>
+
+    <input type="submit" value="Run" id="runButton">
+  </form>
+  <canvas id="voltageChart"></canvas>
+  <div id="output"></div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      document.getElementById("runButton").addEventListener("click", function (event) {
+        event.preventDefault(); // Prevent form submission
+        runSim();
+      });
+    });
+
+    function runSim() {
+      let U0 = parseFloat(document.getElementById("U0").value) || 0;
+      let R1 = parseFloat(document.getElementById("R1").value) || 0;
+      let R2 = parseFloat(document.getElementById("R2").value) || 0;
+      let C = parseFloat(document.getElementById("C").value) || 0;
+      let T = parseFloat(document.getElementById("T").value) || 0;
+      let F = parseFloat(document.getElementById("F").value) || 0;
+      let DC = parseFloat(document.getElementById("DC").value) / 100;
+
+      if (U0 <= 0 || R1 <= 0 || R2 <= 0 || C <= 0 || T <= 0 || F <= 0 || DC <= 0 || DC > 1) {
+        console.error("All input values must be positive numbers.");
+        document.getElementById("output").innerHTML = "Error: All input values must be positive numbers.";
+        return;
+      }
+
+      let V = 0;
+      let t = 1 / F;
+      let tau1 = R1 * C * 1e-6;
+      let tau2 = R2 * C * 1e-6;
+      let cycleData = [];
+      let voltageData = [];
+      let outputText = "";
+      let cycle = 0;
+      cycleData.push(cycle);
+      voltageData.push(V);
+
+      for (let i = 0; i < T;) {
+        let oldV = V;
+
+        // Charging phase
+        V += (U0 - V) * (1 - Math.exp(-((t * DC) / tau1)));
+        cycleData.push(cycle + DC);
+        voltageData.push(V);
+        outputText += `V after charge = ${V.toFixed(5)} V<br>`;
+
+        // Discharging phase
+        V = V * Math.exp(-((t * (1 - DC)) / tau2));
+        cycleData.push(cycle + 1); // Keep discharge phase on the same curve
+        voltageData.push(V);
+        outputText += `V after discharge = ${V.toFixed(5)} V<br>`;
+
+        if (Math.abs(oldV - V) < 1e-5) {
+          break;
+        }
+        i += t;
+        cycle++;
+      }
+
+      outputText += `Final Voltage: ${V.toFixed(5)} V`;
+      document.getElementById("output").innerHTML = outputText;
+
+      drawChart(cycleData, voltageData);
+    }
+
+    function drawChart(cycleData, voltageData) {
+      let ctx = document.getElementById("voltageChart").getContext("2d");
+      if (window.voltageChart instanceof Chart) {
+        window.voltageChart.destroy();
+      }
+      window.voltageChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: cycleData,
+          datasets: [{
+            label: "Voltage over Cycles",
+            data: voltageData,
+            borderColor: "blue",
+            borderWidth: 2,
+            fill: false
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: "Number of Cycles"
+              },
+              type: "linear"
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Voltage [V]"
+              }
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
