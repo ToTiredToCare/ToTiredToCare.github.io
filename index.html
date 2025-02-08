@@ -73,7 +73,10 @@
       let voltageCapacitor1 = 0;
       let voltageCapacitor2 = 0;
       let voltageLamp = 0;
-      let current = supplyU0 / dischargeR + supplyU0 / chargeR1 + supplyU0 / chargeR2;
+      let currentCapacitor1 = supplyU0 / chargeR1;
+      let currentCapacitor2 = supplyU0 / chargeR2;
+      let currentSupply = supplyU0 / dischargeR + supplyU0 / chargeR1 + supplyU0 / chargeR2;
+
       let periodTime = 1 / frequency;
       let tauChargeCapacitor1 = chargeR1 * capacitance1 * 1e-6;
       let tauDischargeCapacitor1 = dischargeR * capacitance1 * 1e-6;
@@ -84,12 +87,17 @@
       let voltageDataCapacitor1 = [];
       let voltageDataCapacitor2 = [];
       let voltageDataLamp = [];
-      let currentData = [];
+      let currentDataLamp = [];
+      let currentDataCapacitor1 = [];
+      let currentDataCapacitor2 = [];
+      let currentDataSupply = [];
       timeData.push(0);
       voltageDataCapacitor1.push(0);
       voltageDataCapacitor2.push(0);
       voltageDataLamp.push(0);
-      currentData.push(current);
+      currentDataCapacitor1.push(currentCapacitor1);
+      currentDataCapacitor2.push(currentCapacitor2);
+      currentDataSupply.push(currentSupply);
 
       for (let time = 0; time < simTime;) {
 
@@ -97,13 +105,17 @@
         voltageCapacitor1 += (supplyU0 - voltageCapacitor1) * (1 - Math.exp(-((periodTime * dutyCycle) / tauChargeCapacitor1)));
         voltageCapacitor2 += (supplyU0 - voltageCapacitor2) * (1 - Math.exp(-((periodTime * dutyCycle) / tauChargeCapacitor2)));
 
-        current = supplyU0 / dischargeR + (supplyU0 - voltageCapacitor1) / chargeR1 + (supplyU0 - voltageCapacitor2) / chargeR2;
+        currentCapacitor1 = (supplyU0 - voltageCapacitor1) / chargeR1;
+        currentCapacitor2 = (supplyU0 - voltageCapacitor2) / chargeR2;
+        currentSupply = supplyU0 / dischargeR + (supplyU0 - voltageCapacitor1) / chargeR1 + (supplyU0 - voltageCapacitor2) / chargeR2;
 
         timeData.push(time + dutyCycle * periodTime);
         voltageDataCapacitor1.push(voltageCapacitor1);
         voltageDataCapacitor2.push(voltageCapacitor2);
         voltageDataLamp.push(supplyU0);
-        currentData.push(current);
+        currentDataSupply.push(currentSupply);
+        currentDataCapacitor1.push(currentCapacitor1);
+        currentDataCapacitor2.push(currentCapacitor2);
 
         // Discharging phase
         tempvoltageCapacitor1 = voltageCapacitor1 * Math.exp(-((periodTime * (1 - dutyCycle)) / tauDischargeCapacitor1));
@@ -131,7 +143,9 @@
         voltageDataCapacitor1.push(voltageCapacitor1);
         voltageDataCapacitor2.push(voltageCapacitor2);
         voltageDataLamp.push(Math.max(voltageCapacitor1, voltageCapacitor2));
-        currentData.push(0);
+        currentDataSupply.push(0);
+        currentDataCapacitor1.push(0);
+        currentDataCapacitor2.push(0);
 
         time += periodTime;
       }
@@ -145,10 +159,10 @@
       voltageDataCapacitor2.push(voltageCapacitor2);
       voltageDataLamp.push(Math.max(voltageCapacitor1, voltageCapacitor2));
 
-      drawChart(timeData, voltageDataCapacitor1, voltageDataCapacitor2, voltageDataLamp, currentData);
+      drawChart(timeData, voltageDataCapacitor1, voltageDataCapacitor2, voltageDataLamp, currentDataSupply, currentDataCapacitor1, currentDataCapacitor2);
     }
 
-    function drawChart(timeData, voltageDataCapacitor1, voltageDataCapacitor2, voltageDataLamp, currentData) {
+    function drawChart(timeData, voltageDataCapacitor1, voltageDataCapacitor2, voltageDataLamp, currentDataSupply, currentDataCapacitor1, currentDataCapacitor2) {
       let ctx = document.getElementById("voltageChart").getContext("2d");
 
       if (window.voltageChart instanceof Chart) {
@@ -185,9 +199,25 @@
               yAxisID: "y"
             },
             {
-              label: "Current [A]",
-              data: currentData,
+              label: "Current Supply [A]",
+              data: currentDataSupply,
               borderColor: "purple",
+              borderWidth: 1,
+              fill: false,
+              yAxisID: "y1"
+            },
+            {
+              label: "Current Capacitor 1 [A]",
+              data: currentDataCapacitor1,
+              borderColor: "yellow",
+              borderWidth: 1,
+              fill: false,
+              yAxisID: "y1"
+            },
+            {
+              label: "Current Capacitor 2 [A]",
+              data: currentDataCapacitor2,
+              borderColor: "brown",
               borderWidth: 1,
               fill: false,
               yAxisID: "y1"
