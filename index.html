@@ -8,36 +8,36 @@
 </head>
 
 <body>
-  <form>
-    <label for="supplyU0">Peak supply voltage [V]:</label>
-    <input type="number" id="supplyU0" value="10"><br><br>
+  <form id="inputs">
+    <label for="supplyVoltage">Peak supply voltage [V]:</label>
+    <input type="number" id="supplyVoltage" value="10"><br><br>
 
-    <label for="dischargeR">Lamp resistance [Ω]:</label>
-    <input type="number" id="dischargeR" value="50"><br><br>
+    <label for="lampResistance">Lamp resistance [Ω]:</label>
+    <input type="number" id="lampResistance" value="50"><br><br>
 
     <label for="simTime">Simulation time [s]:</label>
     <input type="number" id="simTime" value="1"><br><br>
 
-    <label for="frequency">Frequency [Hz]:</label>
-    <input type="number" id="frequency" value="110"><br><br>
+    <label for="supplyFrequency">supply.frequency [Hz]:</label>
+    <input type="number" id="supplyFrequency" value="110"><br><br>
 
-    <label for="dutyCycle">Duty cycle [%]:</label>
-    <input type="number" id="dutyCycle" value="85"><br><br>
+    <label for="supplyDutyCycle">Duty cycle [%]:</label>
+    <input type="number" id="supplyDutyCycle" value="85"><br><br>
 
-    <label for="switchTime">Switching Time [ms]:</label>
-    <input type="number" id="switchTime" value="60"><br><br>
+    <label for="lampOffDelay">Switching Time [ms]:</label>
+    <input type="number" id="lampOffDelay" value="60"><br><br>
 
-    <label for="chargeR1">Charging Resistor1 [Ω]:</label>
-    <input type="number" id="chargeR1" value="20"><br><br>
+    <label for="capacitor1Resistance">Charging Resistor 1 [Ω]:</label>
+    <input type="number" id="capacitor1Resistance" value="20"><br><br>
 
-    <label for="capacitance1">Capacitance1 [µF]:</label>
-    <input type="number" id="capacitance1" value="500"><br><br>
+    <label for="capacitor1Capacitance">Capacitor 1 Capacitance [µF]:</label>
+    <input type="number" id="capacitor1Capacitance" value="500"><br><br>
 
-    <label for="chargeR2">Charging Resistor2 [Ω]:</label>
-    <input type="number" id="chargeR2" value="20"><br><br>
+    <label for="capacitor2Resistance">Charging Resistor 2 [Ω]:</label>
+    <input type="number" id="capacitor2Resistance" value="20"><br><br>
 
-    <label for="capacitance2">Capacitance2 [µF]:</label>
-    <input type="number" id="capacitance2" value="5000"><br><br>
+    <label for="capacitor2Capacitance">Capacitor 2 Capacitance [µF]:</label>
+    <input type="number" id="capacitor2Capacitance" value="5000"><br><br>
 
     <input type="submit" value="Run" id="runButton">
   </form>
@@ -53,116 +53,178 @@
     });
 
     function runSim() {
-      let supplyU0 = parseFloat(document.getElementById("supplyU0").value) || 0;
-      let simTime = parseFloat(document.getElementById("simTime").value) || 0;
-      let frequency = parseFloat(document.getElementById("frequency").value) || 0;
-      let dutyCycle = parseFloat(document.getElementById("dutyCycle").value) / 100;
-      let switchTime = parseFloat(document.getElementById("switchTime").value) / 1000;
-      let dischargeR = parseFloat(document.getElementById("dischargeR").value) || 0;
-      let chargeR1 = parseFloat(document.getElementById("chargeR1").value) || 0;
-      let capacitance1 = parseFloat(document.getElementById("capacitance1").value) || 0;
-      let chargeR2 = parseFloat(document.getElementById("chargeR2").value) || 0;
-      let capacitance2 = parseFloat(document.getElementById("capacitance2").value) || 0;
+      const capacitor1 = { tau: {}, resistance: 0, voltage: 0, current: 0, voltageData: [0], currentData: [0], capacitance: 0 };
+      const capacitor2 = { tau: {}, resistance: 0, voltage: 0, current: 0, voltageData: [0], currentData: [0], capacitance: 0 };
+      const capacitors = [capacitor1, capacitor2];
+      const supply = {};
+      const lamp = {};
+      const colors = [1, "gray", "black", "red", "maroon", "yellow", "olive", "lime", "green", "aqua", "teal", "blue", "navy", "fuchsia", "purple"];
+      const datasets = [];
+      const sim = { simtime: 0, runtime: 0, timeData: [0] };
 
-      if (supplyU0 <= 0 || chargeR1 <= 0 || dischargeR <= 0 || capacitance1 <= 0 || capacitance2 <= 0 || simTime <= 0 || frequency <= 0 || dutyCycle <= 0 || dutyCycle > 1 || switchTime < 0) {
+      supply.voltage = parseFloat(document.getElementById("supplyVoltage").value) || 0;
+      sim.simtime = parseFloat(document.getElementById("simTime").value) || 0;
+      supply.frequency = parseFloat(document.getElementById("supplyFrequency").value) || 0;
+      supply.dutyCycle = parseFloat(document.getElementById("supplyDutyCycle").value) / 100;
+      lamp.offDelay = parseFloat(document.getElementById("lampOffDelay").value) / 1000;
+      lamp.resistance = parseFloat(document.getElementById("lampResistance").value) || 0;
+      capacitors[0].resistance = parseFloat(document.getElementById("capacitor1Resistance").value) || 0;
+      capacitors[0].capacitance = parseFloat(document.getElementById("capacitor1Capacitance").value) || 0;
+      capacitors[1].resistance = parseFloat(document.getElementById("capacitor2Resistance").value) || 0;
+      capacitors[1].capacitance = parseFloat(document.getElementById("capacitor2Capacitance").value) || 0;
+
+      if (supply.voltage <= 0 || capacitors[0].resistance <= 0 || lamp.resistance <= 0 || capacitors[0].capacitance <= 0 || capacitors[1].capacitance <= 0 || sim.simtime <= 0 || supply.frequency <= 0 || supply.dutyCycle <= 0 || supply.dutyCycle > 1 || lamp.offDelay < 0) {
         console.error("All input values must be positive numbers.");
         document.getElementById("output").innerHTML = "Error: All input values must be positive numbers.";
         return;
       }
 
-      let voltageCapacitor1 = 0;
-      let voltageCapacitor2 = 0;
-      let voltageLamp = 0;
-      let currentCapacitor1 = supplyU0 / chargeR1;
-      let currentCapacitor2 = supplyU0 / chargeR2;
-      let currentSupply = supplyU0 / dischargeR + supplyU0 / chargeR1 + supplyU0 / chargeR2;
 
-      let periodTime = 1 / frequency;
-      let tauChargeCapacitor1 = chargeR1 * capacitance1 * 1e-6;
-      let tauDischargeCapacitor1 = dischargeR * capacitance1 * 1e-6;
-      let tauChargeCapacitor2 = chargeR2 * capacitance2 * 1e-6;
-      let tauDischargeCapacitor2 = dischargeR * capacitance2 * 1e-6;
-      let tauDischargeCapacitors = dischargeR * (capacitance1 + capacitance2) * 1e-6;
-      let timeData = [];
-      let voltageDataCapacitor1 = [];
-      let voltageDataCapacitor2 = [];
-      let voltageDataLamp = [];
-      let currentDataLamp = [];
-      let currentDataCapacitor1 = [];
-      let currentDataCapacitor2 = [];
-      let currentDataSupply = [];
-      timeData.push(0);
-      voltageDataCapacitor1.push(0);
-      voltageDataCapacitor2.push(0);
-      voltageDataLamp.push(0);
-      currentDataCapacitor1.push(currentCapacitor1);
-      currentDataCapacitor2.push(currentCapacitor2);
-      currentDataSupply.push(currentSupply);
+      capacitors.forEach(capacitor => {
+        capacitor.current = supply.voltage / capacitor.resistance;
+        capacitor.tau.charge = capacitor.resistance * capacitor.capacitance * 1e-6;
+        capacitor.tau.discharge = lamp.resistance * capacitor.capacitance * 1e-6;
+        capacitor.currentData = [0];
+      });
 
-      for (let time = 0; time < simTime;) {
+      lamp.voltage = supply.voltage;
+      lamp.current = lamp.voltage / lamp.resistance;
+      supply.current = lamp.current + capacitors.reduce((current, capacitor) => current + capacitor.current, 0);
+      supply.periodTime = 1 / supply.frequency;
+      lamp.voltageData = [0];
+      lamp.currentData = [0];
+      supply.currentData = [0];
+
+
+      while (true) {
 
         // Charging phase
-        voltageCapacitor1 += (supplyU0 - voltageCapacitor1) * (1 - Math.exp(-((periodTime * dutyCycle) / tauChargeCapacitor1)));
-        voltageCapacitor2 += (supplyU0 - voltageCapacitor2) * (1 - Math.exp(-((periodTime * dutyCycle) / tauChargeCapacitor2)));
+        capacitorCharge(capacitors, lamp, supply, sim);
 
-        currentCapacitor1 = (supplyU0 - voltageCapacitor1) / chargeR1;
-        currentCapacitor2 = (supplyU0 - voltageCapacitor2) / chargeR2;
-        currentSupply = supplyU0 / dischargeR + (supplyU0 - voltageCapacitor1) / chargeR1 + (supplyU0 - voltageCapacitor2) / chargeR2;
-
-        timeData.push(time + dutyCycle * periodTime);
-        voltageDataCapacitor1.push(voltageCapacitor1);
-        voltageDataCapacitor2.push(voltageCapacitor2);
-        voltageDataLamp.push(supplyU0);
-        currentDataSupply.push(currentSupply);
-        currentDataCapacitor1.push(currentCapacitor1);
-        currentDataCapacitor2.push(currentCapacitor2);
+        if (sim.runtime > sim.simtime) {
+          break;
+        };
 
         // Discharging phase
-        tempvoltageCapacitor1 = voltageCapacitor1 * Math.exp(-((periodTime * (1 - dutyCycle)) / tauDischargeCapacitor1));
-        tempvoltageCapacitor2 = voltageCapacitor2 * Math.exp(-((periodTime * (1 - dutyCycle)) / tauDischargeCapacitor2));
+        capacitorDischarge(capacitors, lamp, supply, sim, (supply.periodTime * (1 - supply.dutyCycle)));
 
-        if (voltageCapacitor1 < voltageCapacitor2) {
-          if (tempvoltageCapacitor1 > tempvoltageCapacitor2) {
-            voltageCapacitor1 = voltageCapacitor2 = (voltageCapacitor1 * capacitance1 + voltageCapacitor2 * capacitance2) / (capacitance1 + capacitance2) * Math.exp(-((periodTime * (1 - dutyCycle)) / tauDischargeCapacitors));
-          }
-          else {
-            voltageCapacitor2 = voltageCapacitor2 * Math.exp(-((periodTime * (1 - dutyCycle)) / tauDischargeCapacitor2));
-          }
-        }
-        if (voltageCapacitor1 > voltageCapacitor2) {
-          if (tempvoltageCapacitor1 < tempvoltageCapacitor2) {
-            voltageCapacitor1 = voltageCapacitor2 = (voltageCapacitor1 * capacitance1 + voltageCapacitor2 * capacitance2) / (capacitance1 + capacitance2) * Math.exp(-((periodTime * (1 - dutyCycle)) / tauDischargeCapacitors));
-          }
-          else {
-            voltageCapacitor1 = voltageCapacitor1 * Math.exp(-((periodTime * (1 - dutyCycle)) / tauDischargeCapacitor1));
-          }
-        }
-
-
-        timeData.push(time + periodTime);
-        voltageDataCapacitor1.push(voltageCapacitor1);
-        voltageDataCapacitor2.push(voltageCapacitor2);
-        voltageDataLamp.push(Math.max(voltageCapacitor1, voltageCapacitor2));
-        currentDataSupply.push(0);
-        currentDataCapacitor1.push(0);
-        currentDataCapacitor2.push(0);
-
-        time += periodTime;
+        sim.runtime += supply.periodTime;
       }
 
+      capacitorDischarge(capacitors, lamp, supply, sim, lamp.offDelay)
 
-      timeData.push(simTime + switchTime);
+      capacitors.forEach((capacitor, index) => {
+        newdataset(datasets, "Voltage Capacitor " + index + " [V]", capacitor.voltageData, colors, "y")
+        newdataset(datasets, "Current Capacitor " + index + " [A]", capacitor.currentData, colors, "y1")
+      });
+      newdataset(datasets, "Voltage Lamp [V]", lamp.voltageData, colors, "y");
+      newdataset(datasets, "Current Lamp [A]", lamp.currentData, colors, "y1");
+      newdataset(datasets, "Current Supply [A]", supply.currentData, colors, "y1");
 
-      voltageCapacitor1 = voltageCapacitor2 = (voltageCapacitor1 * capacitance1 + voltageCapacitor2 * capacitance2) / (capacitance1 + capacitance2) * Math.exp(-((switchTime) / tauDischargeCapacitors));
-
-      voltageDataCapacitor1.push(voltageCapacitor1);
-      voltageDataCapacitor2.push(voltageCapacitor2);
-      voltageDataLamp.push(Math.max(voltageCapacitor1, voltageCapacitor2));
-
-      drawChart(timeData, voltageDataCapacitor1, voltageDataCapacitor2, voltageDataLamp, currentDataSupply, currentDataCapacitor1, currentDataCapacitor2);
+      drawChart(sim.timeData, datasets);
     }
 
-    function drawChart(timeData, voltageDataCapacitor1, voltageDataCapacitor2, voltageDataLamp, currentDataSupply, currentDataCapacitor1, currentDataCapacitor2) {
+    function newdataset(datasets, label, data, colors, axis) {
+      datasets.push({
+        label: label,
+        data: data,
+        borderColor: colors[colors[0]],
+        borderWidth: 1,
+        fill: false,
+        yAxisID: axis
+      });
+      colors[0] += 1;
+      return datasets;
+    };
+
+    function capacitorCharge(capacitors, lamp, supply, sim) {
+
+      capacitors.forEach(capacitor => {
+        capacitor.current = (supply.voltage - capacitor.voltage) / capacitor.resistance;
+        capacitor.voltage += (supply.voltage - capacitor.voltage) * (1 - Math.exp(-((supply.periodTime * supply.dutyCycle) / capacitor.tau.charge)));
+      });
+
+      lamp.voltage = supply.voltage
+      lamp.current = lamp.voltage / lamp.resistance;
+      supply.current = supply.voltage / lamp.resistance + capacitors.reduce((current, capacitor) => current + capacitor.current, 0);
+      recordData(capacitors, lamp, supply, sim, sim.runtime)
+      capacitors.forEach(capacitor => {
+        capacitor.current = (supply.voltage - capacitor.voltage) / capacitor.resistance;
+      });
+      recordData(capacitors, lamp, supply, sim, sim.runtime + supply.periodTime * supply.dutyCycle)
+    };
+
+
+
+
+
+    function capacitorDischarge(capacitors, lamp, supply, sim, dischargeTime) {
+
+      capacitors.sort((a, b) => b.voltage - a.voltage);
+
+      let capacitanceShared = 0;
+      let timeElapsed = 0;
+      let voltageShared = capacitors[0].voltage;
+      let tauShared = capacitors[0].tau.discharge;
+      let taupreview = 0;
+      let timepreview = 0;
+
+      capacitors.forEach(capacitor => {
+        capacitor.Shared = false;
+      });
+
+
+      for (i = 0; timeElapsed < dischargeTime; i++) {
+        if (timeElapsed < dischargeTime) {
+          capacitors[i].Shared = true;
+          capacitanceShared += capacitors[i].capacitance;
+          tauShared = lamp.resistance * (capacitanceShared) * 1e-6;
+          if (i == capacitors.length - 1) {
+            voltageShared = voltageShared * Math.exp(-((dischargeTime - timeElapsed) / tauShared));
+            timeElapsed = dischargeTime;
+          }
+          else {
+            timepreview = tauShared * Math.log(voltageShared / capacitors[i + 1].voltage);
+            if ((timeElapsed + timepreview) < dischargeTime) {
+              timeElapsed += timepreview;
+              voltageShared = capacitors[i + 1].voltage;
+              capacitanceShared += capacitors[i].capacitance;
+            }
+            else {
+              tauShared = lamp.resistance * (capacitanceShared) * 1e-6;
+              voltageShared = voltageShared * Math.exp(-((dischargeTime - timeElapsed) / tauShared));
+              timeElapsed = dischargeTime;
+            };
+          };
+        };
+
+        capacitors.forEach(capacitor => {
+          if (capacitor.Shared) {
+            capacitor.current = - capacitor.voltage / lamp.resistance;
+            capacitor.voltage = voltageShared;
+          };
+        });
+        lamp.voltage = voltageShared;
+        lamp.current = lamp.voltage / lamp.resistance;
+        supply.current = 0;
+        recordData(capacitors, lamp, supply, sim, sim.runtime + supply.periodTime * supply.dutyCycle + timeElapsed)
+      };
+    };
+
+    function recordData(capacitors, lamp, supply, sim, time) {
+      sim.timeData.push(time);
+      capacitors.forEach(capacitor => {
+        capacitor.voltageData.push(capacitor.voltage);
+        capacitor.currentData.push(capacitor.current);
+      });
+      lamp.voltageData.push(lamp.voltage);
+      lamp.currentData.push(lamp.current);
+      supply.currentData.push(supply.current);
+    };
+
+
+
+    function drawChart(timeData, datasets) {
       let ctx = document.getElementById("voltageChart").getContext("2d");
 
       if (window.voltageChart instanceof Chart) {
@@ -173,56 +235,7 @@
         type: "line",
         data: {
           labels: timeData,
-          datasets: [
-            {
-              label: "Voltage Capacitor 1 [V]",
-              data: voltageDataCapacitor1,
-              borderColor: "blue",
-              borderWidth: 1,
-              fill: false,
-              yAxisID: "y"
-            },
-            {
-              label: "Voltage Capacitor 2 [V]",
-              data: voltageDataCapacitor2,
-              borderColor: "green",
-              borderWidth: 1,
-              fill: false,
-              yAxisID: "y"
-            },
-            {
-              label: "Voltage Lamp [V]",
-              data: voltageDataLamp,
-              borderColor: "red",
-              borderWidth: 1,
-              fill: false,
-              yAxisID: "y"
-            },
-            {
-              label: "Current Supply [A]",
-              data: currentDataSupply,
-              borderColor: "purple",
-              borderWidth: 1,
-              fill: false,
-              yAxisID: "y1"
-            },
-            {
-              label: "Current Capacitor 1 [A]",
-              data: currentDataCapacitor1,
-              borderColor: "yellow",
-              borderWidth: 1,
-              fill: false,
-              yAxisID: "y1"
-            },
-            {
-              label: "Current Capacitor 2 [A]",
-              data: currentDataCapacitor2,
-              borderColor: "brown",
-              borderWidth: 1,
-              fill: false,
-              yAxisID: "y1"
-            }
-          ]
+          datasets: datasets
         },
         options: {
           responsive: true,
@@ -270,7 +283,7 @@
           }
         }
       });
-    }
+    };
   </script>
 </body>
 
